@@ -1,5 +1,6 @@
 package com.vibe.im.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vibe.im.dto.request.SendMessageRequest;
 import com.vibe.im.dto.response.MessageResponse;
 import com.vibe.im.dto.response.PageResponse;
@@ -11,6 +12,7 @@ import com.vibe.im.exception.ErrorCode;
 import com.vibe.im.repository.MessageRepository;
 import com.vibe.im.repository.UserRepository;
 import com.vibe.im.util.SnowflakeIdGenerator;
+import com.vibe.im.websocket.ConnectionManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -20,6 +22,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
@@ -52,6 +55,8 @@ public class ChatService {
     private final MessageRepository messageRepository;
     private final UserRepository userRepository;
     private final SnowflakeIdGenerator snowflakeIdGenerator;
+    private final ConnectionManager connectionManager;
+    private final ObjectMapper objectMapper;
 
     /**
      * 发送消息
@@ -85,10 +90,6 @@ public class ChatService {
             throw new BusinessException(ErrorCode.INVALID_PARAMETER);
         }
 
-        // 生成消息ID
-        String messageId = snowflakeIdGenerator.generateId();
-        log.debug("生成消息ID: {}", messageId);
-
         // 创建消息实体
         Message message = Message.builder()
             .senderId(senderId)
@@ -103,17 +104,46 @@ public class ChatService {
         Message savedMessage = messageRepository.save(message);
         log.debug("消息已保存，ID: {}", savedMessage.getId());
 
-        // 根据接收者在线状态更新消息状态
-        MessageStatus finalStatus = receiver.getStatus().name().equals("ONLINE")
-            ? MessageStatus.DELIVERED
-            : MessageStatus.SENT;
+        // 检查接收者是否在线
+        boolean isOnline = ConnectionManager.isUserOnline(request.getReceiverId());
+        MessageStatus finalStatus;
+
+        if (isOnline) {
+            // 接收者在线，通过WebSocket推送消息
+            try {
+                // 生成消息响应DTO并序列化为JSON
+                MessageResponse messageResponse = toMessageResponse(savedMessage, receiver.getUsername());
+                String messageJson = objectMapper.writeValueAsString(messageResponse);
+
+                // 通过ConnectionManager发送消息
+                ConnectionManager.sendMessageToUser(request.getReceiverId(), messageJson);
+                log.info("消息已通过WebSocket推送给在线用户，receiverId: {}, messageId: {}",
+                    request.getReceiverId(), savedMessage.getId());
+
+                // 更新消息状态为DELIVERED
+                finalStatus = MessageStatus.DELIVERED;
+            } catch (IOException e) {
+                // 序列化失败，回退到离线状态
+                log.error("序列化消息失败，receiverId: {}, messageId: {}",
+                    request.getReceiverId(), savedMessage.getId(), e);
+                finalStatus = MessageStatus.SENT;
+            } catch (Exception e) {
+                // WebSocket发送失败，回退到离线状态
+                log.error("通过WebSocket发送消息失败，receiverId: {}, messageId: {}",
+                    request.getReceiverId(), savedMessage.getId(), e);
+                finalStatus = MessageStatus.SENT;
+            }
+        } else {
+            // 接收者离线，消息状态为SENT
+            log.debug("接收者离线，消息状态设为SENT，receiverId: {}", request.getReceiverId());
+            finalStatus = MessageStatus.SENT;
+        }
+
+        // 保存最终状态
         savedMessage.setStatus(finalStatus);
         savedMessage.setSendTime(LocalDateTime.now());
         messageRepository.save(savedMessage);
-        log.debug("消息状态已更新为: {}", finalStatus);
-
-        // TODO: WebSocket推送消息给接收者
-        // webSocketService.sendMessage(receiverId, savedMessage);
+        log.debug("消息状态已更新为: {}, messageId: {}", finalStatus, savedMessage.getId());
 
         return toMessageResponse(savedMessage, receiver.getUsername());
     }
