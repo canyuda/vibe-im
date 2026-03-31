@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import 'chat_list_page.dart';
 
 /// Login page with registration and login functionality
 /// Provides a form for user authentication and registration
@@ -78,14 +79,9 @@ class _LoginPageState extends State<LoginPage> {
 
       if (mounted) {
         if (success) {
-          // TODO: Navigate to chat list or home page
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                _isLoginMode ? 'Login successful!' : 'Registration successful!',
-              ),
-              backgroundColor: Colors.green,
-            ),
+          // Navigate to chat list page
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const ChatListPage()),
           );
         } else {
           setState(() {

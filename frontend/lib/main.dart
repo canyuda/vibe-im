@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-// TODO: Create these providers in next tasks
 import 'providers/auth_provider.dart';
 import 'providers/chat_provider.dart';
-
-// TODO: Create this page in next task
+import 'services/api_service.dart';
 import 'pages/login_page.dart';
 
 void main() {
@@ -17,10 +15,12 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final apiService = ApiService();
+
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
-        ChangeNotifierProvider(create: (_) => ChatProvider()),
+        ChangeNotifierProvider(create: (_) => AuthProvider(apiService: apiService)),
+        ChangeNotifierProvider(create: (_) => ChatProvider(apiService: apiService)),
       ],
       child: MaterialApp(
         title: 'Vibe Chat',

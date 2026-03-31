@@ -59,14 +59,20 @@ class AuthProvider with ChangeNotifier {
         password: password,
       );
 
-      // Create User object from response data
-      final user = User.fromJson(responseData);
+      // Convert backend response to User object format
+      // Backend returns id as Long (integer), convert to String
+      final userData = Map<String, dynamic>.from(responseData);
+      if (userData['id'] != null) {
+        userData['id'] = userData['id'].toString();
+      }
+
+      final user = User.fromJson(userData);
       _currentUser = user;
 
       // Save session to SharedPreferences
       final prefs = await SharedPreferences.getInstance();
       final sessionId = responseData['sessionId'] as String?;
-      final userId = responseData['userId'] as String?;
+      final userId = responseData['id']?.toString();
 
       if (sessionId != null && userId != null) {
         await prefs.setString('sessionId', sessionId);
