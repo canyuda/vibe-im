@@ -5,8 +5,12 @@ import java.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.BindException;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.bind.MissingRequestHeaderException;
 
 /**
  * 全局异常处理器
@@ -27,6 +31,52 @@ public class GlobalExceptionHandler {
      * @param timestamp 时间戳
      */
     public record ErrorResponse(int code, String message, Instant timestamp) {
+    }
+
+    /**
+     * 处理请求参数验证异常
+     *
+     * @param ex 验证异常
+     * @return 错误响应
+     */
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ErrorResponse> handleValidationException(MethodArgumentNotValidException ex) {
+        FieldError fieldError = ex.getBindingResult().getFieldError();
+        String message = fieldError != null ? fieldError.getDefaultMessage() : "参数验证失败";
+
+        log.error("Validation exception occurred: field={}, message={}",
+                fieldError != null ? fieldError.getField() : "unknown", message, ex);
+
+        ErrorResponse errorResponse = new ErrorResponse(
+                ErrorCode.INVALID_PARAMETER.getCode(),
+                message,
+                Instant.now()
+        );
+
+        return ResponseEntity
+                .status(ErrorCode.INVALID_PARAMETER.getCode())
+                .body(errorResponse);
+    }
+
+    /**
+     * 处理缺少请求头异常
+     *
+     * @param ex 缺少请求头异常
+     * @return 错误响应
+     */
+    @ExceptionHandler(MissingRequestHeaderException.class)
+    public ResponseEntity<ErrorResponse> handleMissingRequestHeaderException(MissingRequestHeaderException ex) {
+        log.error("Missing request header exception occurred: header={}", ex.getHeaderName(), ex);
+
+        ErrorResponse errorResponse = new ErrorResponse(
+                ErrorCode.INVALID_PARAMETER.getCode(),
+                "缺少必需的请求头: " + ex.getHeaderName(),
+                Instant.now()
+        );
+
+        return ResponseEntity
+                .status(ErrorCode.INVALID_PARAMETER.getCode())
+                .body(errorResponse);
     }
 
     /**
