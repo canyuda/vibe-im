@@ -76,4 +76,17 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
         com.vibe.im.entity.enums.MessageStatus status,
         Pageable pageable
     );
+
+    /**
+     * 根据接收者ID和消息状态查询消息
+     * 用于查找离线消息
+     *
+     * @param receiverId 接收者ID
+     * @param status 消息状态
+     * @return 消息列表
+     */
+    java.util.List<Message> findByReceiverIdAndStatus(
+        Long receiverId,
+        com.vibe.im.entity.enums.MessageStatus status
+    );
 }
