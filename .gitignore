@@ -1,0 +1,57 @@
+# Maven
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# Eclipse
+.metadata
+.recommenders
+bin/
+tmp/
+tmp/
+*.tmp
+*.bak
+*.swp
+*~.nib
+*.log
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+.idea_modules/
+
+# VS Code
+.vscode/
+*.code-workspace
+.history/
+
+# macOS
+.DS_Store
+.AppleDouble
+.AppleDoubleDB
+.AppleDesktop
+Network Trash folder
+Temporary Items
+Thumbs.db
+
+# Backend target directory
+backend/target/
+backend/**/target/
+
+# Logs
+*.log
+logs/
+
+# Flutter
+frontend/.flutter-plugins-dependencies
+frontend/.dart_tool/
+frontend/build/
+.flutter-plugins
